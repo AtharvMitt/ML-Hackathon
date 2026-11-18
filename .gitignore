@@ -1,7 +1,6 @@
 .cache/
 __pycache__/
 .venv/
-Student folder/
 *.zip
 *.mp4
 /*.pdf
@@ -9,7 +8,4 @@ Student folder/
 /.agents/
 /.aws/
 /.codex/
-
-/evaluator_test/
-/cleaned_data/evaluator_test/
 .ipynb_checkpoints/
