@@ -4,12 +4,11 @@ import json
 from pathlib import Path
 import tempfile
 import shutil
-import joblib
 import numpy as np
-from .predict import predict
+from .predict import load_model, predict
 
 def run(root):
-    model=joblib.load('artifacts/model.joblib')
+    model=load_model(Path('artifacts'))
     config=json.loads(Path('artifacts/decoder.json').read_text())
     source=min((p for p in root.iterdir() if p.is_dir()),key=lambda p:next(p.glob('*.track')).stat().st_size)
     with tempfile.TemporaryDirectory() as temp:

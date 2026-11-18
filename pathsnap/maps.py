@@ -2,18 +2,17 @@
 import argparse
 import json
 from pathlib import Path
-import joblib
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-from .predict import predict
+from .predict import load_model, predict
 from .reference import read_reference
 
 def render(root, interactive):
     # Median observation count gives a reproducible, score-independent example.
     trips=sorted((p for p in root.iterdir() if p.is_dir()),key=lambda p:len(next(p.glob('*.track')).read_bytes().splitlines()))
     directory=trips[len(trips)//2]
-    net,_,fragments,_=predict(directory,joblib.load('artifacts/model.joblib'),
+    net,_,fragments,_=predict(directory,load_model(Path('artifacts')),
                                json.loads(Path('artifacts/decoder.json').read_text()))
     ref=read_reference(directory,net)
     gps=net.track[:,:2]

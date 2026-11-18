@@ -2,9 +2,8 @@
 from pathlib import Path
 import argparse
 import json
-import joblib
 import numpy as np
-from .predict import predict
+from .predict import load_model, predict
 from .reference import align,read_reference
 
 def route_lines(net, arcs):
@@ -18,7 +17,7 @@ def route_lines(net, arcs):
 
 
 def response(directory,artifacts,reference_root,show_reference=True):
-    bundle=joblib.load(artifacts/'model.joblib')
+    bundle=load_model(artifacts)
     config=json.loads((artifacts/'decoder.json').read_text())
     net,pred,fragments,starts=predict(directory,bundle,config)
     lines = [line for fragment in fragments for line in route_lines(net, fragment)]

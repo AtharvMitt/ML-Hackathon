@@ -4,7 +4,18 @@ PathSnap matches a GPS track to the directed roads in its supplied network. Lapt
 
 ## Current results
 
-The saved model is histogram gradient boosting selected by five-fold, whole-trip cross-validation on 80 training trips. On the ten student-testing trips, mean trip-level Top-1 is **55.86%** for nearest road, **89.30%** for the selected classifier and **91.22%** after decoding. Pooling all 19,160 student-test observations gives **89.49%** after decoding. Mean normalised edit distance against the supplied ordered route improves from **0.407** to **0.172**. Lower edit distance is better.
+The default predictor uses two histogram gradient boosting rankers. It combines GPS motion with directed road connectivity. Both stages were fitted on the 80 training trips. Whole-trip validation selected the final configuration before evaluator scoring.
+
+| Split | Correct GPS observations | Pooled Top-1 | Mean trip Top-1 |
+|---|---:|---:|---:|
+| Student test (10 trips) | 17,969 / 19,160 | 93.78% | 94.58% |
+| Evaluator (10 trips, local reference alignment) | 18,904 / 19,674 | 96.09% | 96.27% |
+
+Section 9 of the [executed training notebook](PathSnap_Training.ipynb#sequence-results) reproduces the final fit from the cleaned tables. The demo loads `artifacts/temporal.joblib`. The evaluator reference is opened after prediction for scoring.
+
+### Original five-model experiment
+
+The original saved model is histogram gradient boosting selected by five-fold, whole-trip cross-validation on 80 training trips. On the ten student-testing trips, mean trip-level Top-1 is **55.86%** for nearest road, **89.30%** for the selected classifier and **91.22%** after decoding. Pooling all 19,160 student-test observations gives **89.49%** after decoding. Mean normalised edit distance against the supplied ordered route improves from **0.407** to **0.172**. Lower edit distance is better.
 
 Point labels were derived from the ordered reference route by monotone minimum-distance alignment. Direction and timing are ambiguous at stops, junctions and repeated visits. The scorer includes all points, including candidate misses and high-residual examples. The largest training trips can produce long stretches far from the reference. Two trips account for 17,052 of 18,978 training candidate misses. All ten student-test trips together have 63 misses. These are development results. The teacher's official point alignment, if supplied, should replace the private scoring function before evaluation.
 
