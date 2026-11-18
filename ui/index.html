@@ -5,10 +5,10 @@
 </style><main><header><h1>PathSnap</h1><span>Route reconstruction</span></header>
 <form id="controls"><label>API address<input id="host" type="url" required></label><button type="button" id="connect">Load trips</button>
 <label>Trip<select id="trips" disabled></select></label><button id="run" disabled>Reconstruct route</button></form>
-<section><output id="status" aria-live="polite">Connect to the API on Laptop 1.</output><p><b class="gps">● GPS observations</b> &nbsp; <b class="route">━ Predicted road route</b></p><canvas aria-label="Map of the selected trip and predicted route"></canvas></section></main>
+<section><output id="status" aria-live="polite">Connect to the API on Laptop 1.</output><p><b class="gps">● GPS observations</b> &nbsp; <b class="route">━ Predicted road route</b> &nbsp; <b style="color:#68747d">━ Road network</b></p><canvas aria-label="Map of the selected trip and predicted route"></canvas></section></main>
 <script>
 const el=id=>document.getElementById(id),host=el('host'),trips=el('trips'),run=el('run'),statusLine=el('status');
-host.value=localStorage.getItem('api') || ('http://'+(location.hostname||'localhost')+':8000');
+host.value=new URLSearchParams(location.search).get('api') || localStorage.getItem('api') || ('http://'+(location.hostname||'localhost')+':8000');
 let data,version=0;
 const base=()=>host.value.trim().replace(/\/$/,'');
 function reset(){version++;data=null;draw();trips.replaceChildren();trips.disabled=run.disabled=true;}
@@ -23,13 +23,28 @@ trips.onchange=()=>{version++;data=null;draw();run.disabled=false;statusLine.val
 el('controls').onsubmit=async e=>{e.preventDefault();const v=++version;run.disabled=true;data=null;draw();statusLine.value='Reconstructing…';
 try{const r=await fetch(base()+'/predict/'+encodeURIComponent(trips.value),{method:'POST'});if(!r.ok)throw Error('Prediction failed ('+r.status+')');
 const next=await r.json();if(v!==version)return;data=next;draw();
-statusLine.value='Trip '+data.trip+' · '+data.track.length+' observations · '+data.route.length+' route fragments · '+data.elapsed_seconds.toFixed(2)+' s'+(data.metrics?' · Top-1 '+(100*data.metrics.top1).toFixed(2)+'%':'');
+statusLine.value='Trip '+data.trip+' · '+data.track.length+' observations · '+data.route.length+' route fragments · '+data.elapsed_seconds.toFixed(2)+' s'+(data.metrics?' · Top-1 '+(100*data.metrics.top1).toFixed(2)+'%':'')+(data.road_network?'':' · Road layer unavailable. Restart the updated API.');
 }catch(e){if(v===version)statusLine.value=e.message;}finally{if(v===version)run.disabled=false;}};
 function draw(){const c=document.querySelector('canvas'),ctx=c.getContext('2d'),d=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
 c.width=w*d;c.height=h*d;ctx.scale(d,d);if(!data)return;
 const points=data.track.concat(data.route.flat()),kx=Math.cos(data.track[0][1]*Math.PI/180);
 let l=Infinity,r=-Infinity,b=Infinity,t=-Infinity;for(const [x,y] of points){l=Math.min(l,x*kx);r=Math.max(r,x*kx);b=Math.min(b,y);t=Math.max(t,y);}
 const s=Math.min((w-32)/Math.max(r-l,1e-9),(h-32)/Math.max(t-b,1e-9)), xy=([x,y])=>[w/2+(x*kx-(l+r)/2)*s,h/2-(y-(t+b)/2)*s];
+if (data.road_network) {
+    const {nodes, edges} = data.road_network;
+    const projected = nodes.map(xy);
+    ctx.beginPath();
+    for (const [from, to] of edges) {
+        const [x1, y1] = projected[from], [x2, y2] = projected[to];
+        if (Math.max(x1, x2) < 0 || Math.min(x1, x2) > w ||
+            Math.max(y1, y2) < 0 || Math.min(y1, y2) > h) continue;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+    }
+    ctx.strokeStyle = '#84919a';
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+}
 ctx.strokeStyle='#17764d';ctx.lineWidth=3;for(const segment of data.route){ctx.beginPath();segment.forEach((p,i)=>{const q=xy(p);if(i)ctx.lineTo(...q);else ctx.moveTo(...q);});ctx.stroke();}
 ctx.fillStyle='#735196aa';for(const p of data.track){const [x,y]=xy(p);ctx.fillRect(x-1,y-1,2,2);}}
 window.addEventListener('resize',draw);

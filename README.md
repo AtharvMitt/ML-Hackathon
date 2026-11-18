@@ -50,7 +50,7 @@ On Laptop 2 copy the ui directory, open a terminal in its parent directory and r
 python -m http.server 8080 --directory ui
 ```
 
-Open http://localhost:8080 on Laptop 2, enter Laptop 1's LAN address and API port, load the trips, select one, and choose **Reconstruct route**. The UI draws each decoded fragment separately and works without map tiles. The API logs the trip, observation count, fragment count, aggregate agreement and processing time. A successful GET /trips returns the configured catalog. POST /predict/{trip_id} runs inference from disk on each request. The optional PATHSNAP_PYTHON setting selects a separate worker interpreter when the API and ML packages use different environments.
+Open http://localhost:8080 on Laptop 2, enter Laptop 1's LAN address and API port, load the trips, select one, and choose **Reconstruct route**. The UI draws the selected trip’s road network in grey, the decoded fragments in green and GPS observations in purple. The geometry comes from the API and works offline. The API logs the trip, observation count, fragment count, aggregate agreement and processing time. A successful GET /trips returns the configured catalog. POST /predict/{trip_id} runs inference from disk on each request. The optional PATHSNAP_PYTHON setting selects a separate worker interpreter when the API and ML packages use different environments.
 
 For the standalone predictor, supply a trip directory with only .track, .nodes and .arcs:
 
