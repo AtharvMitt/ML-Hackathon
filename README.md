@@ -10,6 +10,8 @@ Point labels were derived from the ordered reference route by monotone minimum-d
 
 [Development report](results/development_report.pdf) · [Per-model results](results/model_comparison.csv) · [Per-trip predictions evaluated by method](results/route_comparison.csv) · [Partition inventory](results/inventory.csv) · [Bayesian trials](results/bayesian_trials.csv)
 
+Read the [preprocessing, five-model comparison and MLOps explanation](PATHSNAP_ML_EXPLAINED.md) for the implementation details.
+
 ## Reproduce
 
 From the project root, use Python 3.14 and the versions in requirements.txt. Model loading uses scikit-learn's saved estimator format. Install dependencies once on the inference laptop.
@@ -35,22 +37,25 @@ The training-only decoder fit takes scale, speed and gap estimates from training
 
 ## Two-laptop demo
 
-On Laptop 1 start the service from the project root. The two data paths below enable scoring on permitted development trips. Set them to the evaluator's input partition and private scoring location only for the final evaluation. A separate private reference directory, when supplied, should contain a subdirectory per trip with its .route file. Omitting PATHSNAP_REFERENCES runs prediction only.
+Connect both laptops to the same Wi-Fi. On Laptop 1, from the repository root, start the model and API with the student-test data and private scoring enabled.
 
 ```bash
-export PATHSNAP_TRIPS='Student folder/student_test'
-export PATHSNAP_REFERENCES='Student folder/student_test'
-export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=2
-python -m uvicorn pathsnap.api:app --host 0.0.0.0 --port 8000
+git pull --ff-only origin main
+./run_local.sh --lan
 ```
 
-On Laptop 2 copy the ui directory, open a terminal in its parent directory and run:
+The API listens on all IPv4 interfaces. Give Laptop 2 the Wi-Fi address of Laptop 1 and the API port (default 8000). If that port is occupied, use `API_PORT=8001 ./run_local.sh --lan` and share port 8001. For the final evaluation, set `PATHSNAP_TRIPS` to the reserved input partition and `PATHSNAP_REFERENCES` to the private reference root. With a custom trip root, scoring is enabled only when a reference root is supplied.
+
+On Laptop 2, run these commands from the repository root. Only Python 3 and the UI files are needed on this laptop.
 
 ```bash
-python -m http.server 8080 --directory ui
+git pull --ff-only origin main
+python3 -m http.server 8080 --bind 127.0.0.1 --directory ui
 ```
 
-Open http://localhost:8080 on Laptop 2, enter Laptop 1's LAN address and API port, load the trips, select one, and choose **Reconstruct route**. The UI draws the selected trip’s road network in grey, the decoded fragments in green and GPS observations in purple. The geometry comes from the API and works offline. The API logs the trip, observation count, fragment count, aggregate agreement and processing time. A successful GET /trips returns the configured catalog. POST /predict/{trip_id} runs inference from disk on each request. The optional PATHSNAP_PYTHON setting selects a separate worker interpreter when the API and ML packages use different environments.
+Open http://127.0.0.1:8080 on Laptop 2. Enter `http://<Laptop-1-Wi-Fi-IP>:8000` in **API address**, click **Load trips**, select a trip and click **Reconstruct route**. To test connectivity directly, open `http://<Laptop-1-Wi-Fi-IP>:8000/trips` on Laptop 2. For a one-laptop rehearsal, run `./run_local.sh` without arguments.
+
+The UI draws the selected trip’s road network in grey, the decoded fragments in green and GPS observations in purple. The geometry comes from the API and works offline. The API logs the trip, observation count, fragment count, aggregate agreement and processing time. A successful GET /trips returns the configured catalog. POST /predict/{trip_id} runs inference from disk on each request. The optional PATHSNAP_PYTHON setting selects a separate worker interpreter when the API and ML packages use different environments.
 
 For the standalone predictor, supply a trip directory with only .track, .nodes and .arcs:
 

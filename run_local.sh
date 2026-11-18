@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# Run the existing UI and FastAPI service on this laptop for a development rehearsal.
+# Start a local rehearsal, or serve the API on the LAN for Laptop 2.
 set -euo pipefail
 cd -- "$(dirname -- "$0")"
+
+if [[ $# -gt 1 || ( $# -eq 1 && $1 != --lan ) ]]; then
+    echo "Usage: $0 [--lan]" >&2
+    exit 2
+fi
 
 if [[ -x .venv/bin/python ]]; then
     api_python=.venv/bin/python
@@ -30,6 +35,16 @@ export OMP_NUM_THREADS="${OMP_NUM_THREADS:-2}"
 export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 api_port=${API_PORT:-8000}
 ui_port=${UI_PORT:-8080}
+
+if [[ ${1:-} == --lan ]]; then
+    echo "Laptop 2 should use http://<Laptop-1-Wi-Fi-IP>:$api_port in the API address field."
+    if command -v ip >/dev/null; then
+        ip -brief -4 address show up || true
+    elif command -v hostname >/dev/null && addresses=$(hostname -I 2>/dev/null); then
+        echo "Laptop 1 addresses: $addresses"
+    fi
+    exec "$api_python" -m uvicorn pathsnap.api:app --host 0.0.0.0 --port "$api_port"
+fi
 
 pids=()
 stop_servers() {
