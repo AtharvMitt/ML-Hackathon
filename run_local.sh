@@ -3,10 +3,15 @@
 set -euo pipefail
 cd -- "$(dirname -- "$0")"
 
-if [[ $# -gt 1 || ( $# -eq 1 && $1 != --lan ) ]]; then
-    echo "Usage: $0 [--lan]" >&2
-    exit 2
-fi
+lan=false
+evaluator=false
+for option in "$@"; do
+    case "$option" in
+        --lan) lan=true ;;
+        --evaluator) evaluator=true ;;
+        *) echo "Usage: $0 [--lan] [--evaluator]" >&2; exit 2 ;;
+    esac
+done
 
 if [[ -x .venv/bin/python ]]; then
     api_python=.venv/bin/python
@@ -23,7 +28,14 @@ if ! "$api_python" -c 'import fastapi, uvicorn' ||
     exit 1
 fi
 
-if [[ -z "${PATHSNAP_TRIPS:-}" ]]; then
+if [[ $evaluator == true ]]; then
+    export PATHSNAP_TRIPS='cleaned_data/evaluator_test'
+    export PATHSNAP_REFERENCES="${PATHSNAP_REFERENCES-evaluator_test}"
+    if [[ ! -f "$PATHSNAP_TRIPS/inventory.csv" ]]; then
+        echo 'Run all cells in PathSnap_Evaluator_Preparation.ipynb first.' >&2
+        exit 1
+    fi
+elif [[ -z "${PATHSNAP_TRIPS:-}" ]]; then
     export PATHSNAP_TRIPS='Student folder/student_test'
     export PATHSNAP_REFERENCES="${PATHSNAP_REFERENCES-$PATHSNAP_TRIPS}"
 fi
@@ -36,7 +48,8 @@ export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 api_port=${API_PORT:-8000}
 ui_port=${UI_PORT:-8080}
 
-if [[ ${1:-} == --lan ]]; then
+echo "Serving trips from $PATHSNAP_TRIPS"
+if [[ $lan == true ]]; then
     echo "Laptop 2 should use http://<Laptop-1-Wi-Fi-IP>:$api_port in the API address field."
     if command -v ip >/dev/null; then
         ip -brief -4 address show up || true

@@ -9,3 +9,7 @@ Student folder/
 /.agents/
 /.aws/
 /.codex/
+
+/evaluator_test/
+/cleaned_data/evaluator_test/
+.ipynb_checkpoints/

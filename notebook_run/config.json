@@ -1,0 +1,30 @@
+{
+  "family": "boosting",
+  "selected": {
+    "learning_rate": 0.06860525610098346
+  },
+  "features": [
+    "log_distance",
+    "distance_above_best",
+    "along_fraction",
+    "log_length",
+    "incoming_alignment",
+    "outgoing_alignment",
+    "window_alignment",
+    "incoming_speed",
+    "outgoing_speed",
+    "incoming_overshoot",
+    "outgoing_overshoot"
+  ],
+  "seed": 41,
+  "observation_cap_per_fit_trip": 256,
+  "candidate_count": 8,
+  "versions": {
+    "python": "3.14.10",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "sklearn": "1.9.1",
+    "joblib": "1.6.0",
+    "pandas": "3.1.1"
+  }
+}

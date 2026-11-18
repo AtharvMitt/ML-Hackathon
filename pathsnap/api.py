@@ -29,6 +29,8 @@ def match(trip_id: str):
              str(directory),'--artifacts',os.environ.get('PATHSNAP_ARTIFACTS','artifacts')]
     if root:=os.environ.get('PATHSNAP_REFERENCES'):
         command.extend(['--reference-root',root])
+        if os.environ.get('PATHSNAP_SHOW_REFERENCE') == '0':
+            command.append('--score-only')
     start=perf_counter()
     try:
         output=subprocess.run(command,check=True,capture_output=True,text=True)
