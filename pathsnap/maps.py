@@ -27,15 +27,29 @@ def render(root, interactive):
             ('Prediction',roads[np.concatenate(fragments)],'#00725f',1.6)]
     if interactive:
         import folium
-        m=folium.Map(tiles=None)
-        folium.TileLayer('OpenStreetMap',name='Basemap').add_to(m)
+        # Fractional zoom lets the initial view fit the trip closely.
+        m=folium.Map(tiles=None,prefer_canvas=True,zoom_snap=.25)
+        # A faded keyless basemap keeps the grey network and route colours legible.
+        folium.TileLayer('OpenStreetMap',name='Basemap (faded)',opacity=.45).add_to(m)
         for name,segments,color,width in layers:
             group=folium.FeatureGroup(name=name).add_to(m)
             folium.PolyLine(segments[:,:,::-1].tolist(),color=color,weight=max(1,width)).add_to(group)
-        group=folium.FeatureGroup(name='GPS observations').add_to(m)
-        for lon,lat in gps:
-            folium.CircleMarker([lat,lon],radius=1,color='#59347c').add_to(group)
+            if name=='Road network':
+                # GPS sits above the network but below the routes, so off-road noise stays
+                # visible without hiding the reference and prediction lines.
+                gps_group=folium.FeatureGroup(name='GPS observations').add_to(m)
+                for lon,lat in gps:
+                    folium.CircleMarker([lat,lon],radius=2,stroke=False,fill=True,fill_color='#59347c',
+                                        fill_opacity=.55).add_to(gps_group)
         folium.LayerControl(collapsed=False).add_to(m)
+        # Static legend naming the trip, partition and each layer's styling for the report figure.
+        rows=''.join(f'<div><span style="display:inline-block;width:22px;height:0;border-top:{max(2,round(width))}px solid {color};vertical-align:middle;margin-right:6px"></span>{name}</div>'
+                     for name,_,color,width in layers)
+        rows+='<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#59347c;margin:0 11px 0 7px"></span>GPS observations</div>'
+        m.get_root().html.add_child(folium.Element(
+            '<div style="position:fixed;bottom:28px;right:12px;z-index:9999;background:white;padding:8px 10px;'
+            'border:1px solid #888;border-radius:4px;font:13px sans-serif;line-height:1.5">'
+            f'<b>Trip {directory.name}</b> · {root.name} partition (development)<br>{rows}</div>'))
         m.fit_bounds([lo[::-1].tolist(),hi[::-1].tolist()])
         m.save('results/development_map.html')
     fig,ax=plt.subplots(figsize=(9,7),layout='constrained')
