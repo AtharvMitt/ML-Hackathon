@@ -32,7 +32,7 @@ if [[ $evaluator == true ]]; then
     export PATHSNAP_TRIPS='cleaned_data/evaluator_test'
     export PATHSNAP_REFERENCES="${PATHSNAP_REFERENCES-evaluator_test}"
     if [[ ! -f "$PATHSNAP_TRIPS/inventory.csv" ]]; then
-        echo 'Run all cells in PathSnap_Evaluator_Preparation.ipynb first.' >&2
+        echo 'Run all cells in Prepare_Evaluator_Test_Data.ipynb first.' >&2
         exit 1
     fi
 elif [[ -z "${PATHSNAP_TRIPS:-}" ]]; then
