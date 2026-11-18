@@ -52,6 +52,16 @@ python -m http.server 8080 --directory ui
 
 Open http://localhost:8080 on Laptop 2, enter Laptop 1's LAN address and API port, load the trips, select one, and choose **Reconstruct route**. The UI draws each decoded fragment separately and works without map tiles. The API logs the trip, observation count, fragment count, aggregate agreement and processing time. A successful GET /trips returns the configured catalog. POST /predict/{trip_id} runs inference from disk on each request. The optional PATHSNAP_PYTHON setting selects a separate worker interpreter when the API and ML packages use different environments.
 
+### Student-test rehearsal and evidence
+
+1. Put both laptops on the same LAN. On Laptop 1, run the Uvicorn command above and obtain its LAN IP address from the active network settings. Use `http://<Laptop-1-LAN-IP>:8000` as the API address on Laptop 2.
+2. On Laptop 2, start the UI with the command above. Open `http://localhost:8080`, enter the API address and click **Load trips**. Check that the selector contains all ten IDs listed in [the development API results](results/api_checks.csv). If the list fails to load, open the API address with `/trips` appended in Laptop 2's browser to check reachability. If needed, allow inbound TCP port 8000 on Laptop 1 and use a network that allows the laptops to reach each other. Allow local network access if the browser prompts for it.
+3. Reconstruct `00000000`, then `00000007`. After each request, check that the displayed trip ID, GPS points, predicted route and aggregate score update. The committed student-test handler results give 2,503 observations and 96.20% Top-1 for `00000000`, and 1,354 observations and 89.07% for `00000007`.
+4. In Laptop 2's browser developer tools, inspect each `POST /predict/<trip_id>` in the Network panel. Check for HTTP 200 and confirm the JSON contains `trip`, `track`, `route`, `observation_arcs`, `fragment_starts`, `metrics` and `elapsed_seconds`. The score fields are `metrics.observations` and `metrics.top1`. The two geometry fields must show GPS points and the prediction. Check that the response has no reference labels or reference geometry. Close the developer tools before taking the UI screenshot.
+5. For one successful request, take screenshots on both laptops before issuing another prediction. Save the Laptop 2 browser view as `results/demo_ui.png` with the trip ID, GPS, route and result visible. Save the Laptop 1 Uvicorn terminal view as `results/demo_api_terminal.png` with the matching `POST prediction trip=...` result and the `POST /predict/...` HTTP 200 access log visible. Record the demonstrated IDs, commands used and any setup fix in the rehearsal record.
+
+Local smoke test for [issue #2](https://github.com/AtharvMitt/ML-Hackathon/issues/2): Chrome and the real FastAPI worker ran on one Mac with a synthetic junction in place of the student-test data. Chrome loaded all ten fixture IDs and rendered two successive HTTP 200 predictions using the saved model. GPS points, route geometry and the aggregate observation count updated. The response exposed GPS, predictions, runtime and aggregate scoring fields. The two-laptop student-test rehearsal and its paired screenshots are pending.
+
 For the standalone predictor, supply a trip directory with only .track, .nodes and .arcs:
 
 ```bash
