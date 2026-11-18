@@ -13,6 +13,8 @@ The default predictor uses two histogram gradient boosting rankers. It combines 
 
 Section 9 of the [executed training notebook](PathSnap_Training.ipynb#sequence-results) reproduces the final fit from the cleaned tables. The demo loads `artifacts/temporal.joblib`. The evaluator reference is opened after prediction for scoring.
 
+The [sequence comparison](notebook_run/sequence_comparison.csv) records macro F1, adjacent-observation continuity and inference time for the four feature variants. With the notebook dependencies installed, run `python -m pathsnap.sequence_comparison` to regenerate it from the committed candidate tables and whole-trip folds. The [browser verification](results/sequence_ui.png) shows the final model on evaluator trip 00000015.
+
 ### Original five-model experiment
 
 The original saved model is histogram gradient boosting selected by five-fold, whole-trip cross-validation on 80 training trips. On the ten student-testing trips, mean trip-level Top-1 is **55.86%** for nearest road, **89.30%** for the selected classifier and **91.22%** after decoding. Pooling all 19,160 student-test observations gives **89.49%** after decoding. Mean normalised edit distance against the supplied ordered route improves from **0.407** to **0.172**. Lower edit distance is better.
