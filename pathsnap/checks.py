@@ -41,7 +41,20 @@ def run(root):
             np.savetxt(copy/'unseen.track',np.column_stack((gps,np.arange(len(gps)))))
             _,pred,_,_=predict(copy,model,config)
             assert np.array_equal(edges[pred[-1]], [1,destination])
-    print('Passed reference removal, trip renaming, node/arc renumbering and synthetic turn checks.')
+
+        # A long stationary dwell contains many observations but no sampling gap.
+        # The subsequent time jump and duplicate timestamp must each start a fragment.
+        dwell = np.arange(60)
+        restart = dwell[-1] + config["gap_s"] + 1
+        times = np.r_[dwell, restart, restart]
+        stationary = np.tile((nodes[0] + nodes[1]) / 2, (len(times), 1))
+        np.savetxt(copy/'unseen.track', np.column_stack((stationary, times)))
+        _, pred, fragments, starts = predict(copy, model, config)
+        assert len(pred) == len(times)
+        assert starts == [0, len(dwell), len(dwell) + 1]
+        for first, end, fragment in zip(starts, starts[1:] + [len(times)], fragments):
+            assert set(pred[first:end]).issubset(fragment)
+    print('Passed reference removal, ID renumbering, synthetic turns, dwell and time-gap checks.')
 if __name__=='__main__':
     p=argparse.ArgumentParser()
     p.add_argument('--trips',type=Path,default=Path('Student folder/student_test'))

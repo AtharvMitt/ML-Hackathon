@@ -4,7 +4,14 @@ PathSnap matches a GPS track to the directed roads in its supplied network. Lapt
 
 ## Current results
 
-The saved model is histogram gradient boosting selected by five-fold, whole-trip cross-validation on 80 training trips. On the ten student-testing trips, mean trip-level Top-1 is **55.86%** for nearest road, **89.30%** for the selected classifier and **91.22%** after decoding. Pooling all 19,160 student-test observations gives **89.49%** after decoding. Mean normalised edit distance against the supplied ordered route improves from **0.407** to **0.172**. Lower edit distance is better.
+The demo uses histogram gradient boosting and a motion-aware Viterbi decoder. A local velocity fit smooths GPS jitter within each continuous sampling interval. Viterbi retains the interval endpoints and selects a new point after the vehicle moves two spatial error scales. The road search admits up to 16 candidates when additional roads are plausible or the closest road fits poorly. The final alignment assigns a road to every original GPS observation. Across five whole-trip folds of the 80 training trips, mean accuracy rose from **90.38% to 94.94%** relative to the previous demo. Both test partitions were scored after decoder selection.
+
+| Test partition | Previous demo, mean trip Top-1 | Current demo, mean trip Top-1 | Current pooled Top-1 | Current mean trip arc macro F1 |
+|---|---:|---:|---:|---:|
+| Student test (10 trips) | 93.09% | **98.01%** | 98.52% | 0.982 |
+| Evaluator test (10 trips) | 94.16% | **98.90%** | 99.26% | 0.988 |
+
+[Training-fold decoder comparison](notebook_run/decoder_validation.csv) · [Per-trip scores on both test partitions](notebook_run/route_comparison.csv)
 
 Point labels were derived from the ordered reference route by monotone minimum-distance alignment. Direction and timing are ambiguous at stops, junctions and repeated visits. The scorer includes all points, including candidate misses and high-residual examples. The largest training trips can produce long stretches far from the reference. Two trips account for 17,052 of 18,978 training candidate misses. All ten student-test trips together have 63 misses. These are development results. The teacher's official point alignment, if supplied, should replace the private scoring function before evaluation.
 
@@ -16,7 +23,17 @@ Read the [preprocessing, five-model comparison and MLOps explanation](PATHSNAP_M
 
 [Open the executed training notebook](PathSnap_Training.ipynb) to inspect preprocessing, all five fitted models, Bayesian tuning and Viterbi decoding. It also runs independently beside the teacher's `Student folder/`. The [cleaned training and student-test CSVs](cleaned_data/) and [notebook experiment outputs](notebook_run/) accompany the notebook.
 
-## Reproduce
+## Reproduce the current demo model
+
+Run all cells in [PathSnap_Training.ipynb](PathSnap_Training.ipynb) to rebuild the classifier and select the decoder using the training folds. To activate the notebook’s outputs in a local demo, run the following from the repository root.
+
+```bash
+cp notebook_run/model.joblib notebook_run/decoder.json artifacts/
+```
+
+## Reproduce the original script-based experiment
+
+The following commands rebuild the original classifier comparison and baseline decoder. Use a separate checkout to preserve the current demo artifacts.
 
 From the project root, use Python 3.14 and the versions in requirements.txt. Model loading uses scikit-learn's saved estimator format. Install dependencies once on the inference laptop.
 

@@ -1,5 +1,11 @@
 {
   "distance_scale_m": 10.915663698419326,
   "gap_s": 6.0,
-  "speed_mps": 46.350712478527015
+  "speed_mps": 46.350712478527015,
+  "reversal_cost": 9.553398019955731,
+  "motion_prior": true,
+  "alignment_radius": 8,
+  "smooth_gps": true,
+  "use_anchors": true,
+  "wide_search": true
 }

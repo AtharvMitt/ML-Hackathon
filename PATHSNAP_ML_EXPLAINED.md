@@ -1,8 +1,23 @@
 # PathSnap — preprocessing, five models, and MLOps
 
-PathSnap reconstructs a vehicle’s route from a noisy GPS track and a directed road network. It makes two decisions. First, a classifier scores each nearby road segment for each GPS observation. Then a Viterbi decoder uses the road network and the order of the observations to choose a consistent sequence. **Histogram gradient boosting won the five-model comparison. The deployed classifier scored 89.30% mean trip-level Top-1 accuracy on the ten student-test trips. Decoding raised that to 91.22%.** These figures measure agreement with point labels derived from the supplied reference routes. [Model comparisons](results/model_comparison.csv) · [Route comparisons](results/route_comparison.csv)
+PathSnap reconstructs a vehicle’s route from a noisy GPS track and a directed road network. It makes two decisions. First, a classifier scores each nearby road segment for each GPS observation. Then a Viterbi decoder uses the road network and the order of the observations to choose a consistent sequence. **Histogram gradient boosting won the five-model comparison. The deployed classifier scored 89.30% mean trip-level Top-1 accuracy on the ten student-test trips. The original Viterbi decoder raised that to 91.22%. The current demo reaches 98.01% on the student-test trips and 98.90% on the evaluator trips, using the same metric.** These figures measure agreement with point labels derived from the supplied reference routes. [Model comparisons](results/model_comparison.csv) · [Current route comparisons](notebook_run/route_comparison.csv)
 
 **Where to see the work.** Open the executed training notebook beside the teacher’s `Student folder/`. It contains the preprocessing, label alignment, feature extraction, fitting of all five classifiers and route evaluation in its own cells. Section 5 writes one readable CSV per trip and reads the features and targets back for training. The notebook saves its model and experiment records under `notebook_run/`. The demo loads its packaged model from `artifacts/`. [Training notebook](PathSnap_Training.ipynb) · [Cleaned trip inventory](cleaned_data/inventory.csv) · [Notebook outputs](notebook_run/) · [Demo artifacts](artifacts/)
+
+## Reproduce the published model
+
+The executed notebook is the training entry point for this branch. Run it from the repository root beside `Student folder/` and `evaluator_test/`. The recorded run used Python 3.14.10, NumPy 2.5.4, SciPy 1.18.1, scikit-learn 1.9.1, joblib 1.6.0 and pandas 3.1.1. The notebook sets two OpenMP threads and one OpenBLAS thread. [Recorded environment and feature order](notebook_run/config.json) · [Executed notebook](PathSnap_Training.ipynb)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt pandas==3.1.1 jupyterlab==4.6.6 nbconvert==7.17.2 ipykernel==7.4.0
+jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=1200 PathSnap_Training.ipynb
+cp notebook_run/model.joblib notebook_run/decoder.json artifacts/
+python -m pathsnap.checks
+```
+
+The notebook rebuilds the cleaned CSVs from the original files, reads them back to train the classifiers, and writes fold assignments, tuning trials, decoder comparisons and test scores to `notebook_run/`. The copy command installs both outputs used by the demo. The classifier in this run reproduced the original gradient booster byte for byte. The accuracy gain came from the selected decoding procedure. [Classifier artifact](artifacts/model.joblib) · [Decoder settings](artifacts/decoder.json)
 
 ## 1. How raw files become labelled training examples
 
@@ -96,6 +111,12 @@ Boosting had the best grouped CV Top-1, so the search tuned its learning rate. I
 
 The selected learning rate was **0.0686053**. CV Top-1 moved from **86.97562% to 86.97568%**, effectively a tie. Student-test Top-1 changed from **89.41% to 89.30%**, while covered-point log loss improved slightly from **0.3343 to 0.3330**. The deployed classifier follows the CV selection rule. The experiment supports choosing the boosting family, but provides little evidence that learning-rate tuning improved accuracy. [Trial history](results/bayesian_trials.csv) · [Selected configuration](results/config.json)
 
+### Exact classifier refit
+
+The notebook used shuffled `GroupKFold(n_splits=5, random_state=41)` on trip IDs. Each fold fitted on 64 trips and validated on the other 16. For each fit, a NumPy generator seeded with 41 sampled covered observations without replacement up to the per-trip cap. After selecting the family and learning rate by mean held-out trip Top-1, the notebook refitted the winning estimator on the sampled rows from all 80 training trips. That final matrix contained 20,480 positive and 143,360 negative candidate rows.
+
+The exported estimator was `HistGradientBoostingClassifier` with binary log loss, learning rate `0.06860525610098346`, 100 iterations, 31 maximum leaf nodes per tree, at least 20 rows per leaf, 255 maximum bins, zero L2 regularisation, disabled early stopping and seed 41. The rest of the estimator settings use scikit-learn 1.9.1 defaults. Each prediction uses the same 11 feature columns in their saved order. [Fold membership](notebook_run/folds.csv) · [Six tuning trials](notebook_run/bayesian_trials.csv) · [Selected classifier configuration](notebook_run/config.json)
+
 ### Did the model train on the test data?
 
 Classifier fitting, fold assignment, model selection, learning-rate selection and decoder parameter estimation all use the 80 training trips. The ten `student_test` trips supply development comparisons. The separate evaluator preparation notebook validates and exports the teacher’s new trips under `cleaned_data/evaluator_test/` for inference. It performs no model fitting. The demo computes its prediction before loading an available reference for scoring or display. [Training workflow](pathsnap/experiments.py) · [Evaluator preparation notebook](PathSnap_Evaluator_Preparation.ipynb) · [Demo worker](pathsnap/serve_worker.py)
@@ -106,17 +127,51 @@ For the deployed classifier, mean trip-level Top-1 was **87.67% on the training 
 
 The classifier predicts a binary match score for each candidate. PathSnap clips the scores for numerical stability, converts them to log odds and applies a softmax within each observation. The resulting candidate distribution supplies the HMM emission scores. At each time step, the hidden state is a candidate directed arc together with the GPS point’s projected position on it. [Candidate scoring](pathsnap/experiments.py) · [Decoder](pathsnap/decoder.py)
 
-The decoder compares movement along the directed network with the displacement observed by GPS. A transition can use the remaining portion of the previous arc, a directed shortest path between endpoints, and the initial portion of the next arc. For each predecessor, the decoder gives feasible transitions a log weight of `−|network distance − GPS displacement| / spatial scale` and normalises the weights over its feasible successors. A short backwards shift in projection on the same arc is allowed within the spatial scale to accommodate GPS jitter. Viterbi keeps the best cumulative log score and predecessor for each candidate, then backtracks to recover the sequence and its intermediate connector arcs.
+The original decoder compares movement along the directed network with the displacement observed by GPS. A transition can use the remaining portion of the previous arc, a directed shortest path between endpoints, and the initial portion of the next arc. For each predecessor, the decoder gives feasible transitions a log weight of `−|network distance − GPS displacement| / spatial scale` and normalises the weights over its feasible successors. A short backwards shift in projection on the same arc is allowed within the spatial scale to accommodate GPS jitter. Viterbi keeps the best cumulative log score and predecessor for each candidate, then backtracks to recover the sequence and its intermediate connector arcs.
 
 Three estimates come from the training trips. The 75th percentile of distances to aligned reference arcs gives a **10.92 m** spatial scale. The 99th percentile of observed GPS speeds gives **46.35 m/s** for the transition search bound. The 99.5th percentile of positive sampling intervals gives a **6 s** gap threshold. A nonpositive interval, a gap exceeding that threshold or a step with no feasible continuation starts a new fragment. The HMM is the sequence stage applied to the chosen classifier. Its Viterbi search considers candidate roads in the supplied graph. The earlier alignment for generating training labels searches only positions along the known reference traversal. These settings and the chosen classifier are reused across trips. [Decoder parameter estimation](pathsnap/route_eval.py) · [Deployed values](artifacts/decoder.json)
 
-| Student-test metric | Tuned classifier alone | Classifier + Viterbi |
+| Original student-test experiment | Tuned classifier alone | Classifier + original Viterbi |
 |---|---:|---:|
 | Mean trip-level Top-1 | 89.30% | **91.22%** |
 | Mean trip-level arc macro F1 | 0.802 | **0.904** |
 | Mean normalised route edit distance, lower is better | 0.407 | **0.172** |
 
 Pooling all 19,160 observations gives **89.49%** decoded Top-1. The difference from 91.22% comes from weighting each observation equally instead of each trip equally. The sequence metric also answers a different question. On trip `00000007`, point-level agreement fell from **95.13% to 89.07%**, while normalised route edit distance improved from **0.401 to 0.024**. The decoded traversal closely followed the supplied arc sequence even though more individual observations disagreed with the derived point alignment. [Per-trip route results](results/route_comparison.csv)
+
+### How the current demo improves the route
+
+The selected decoder gives half weight to classifier log scores because neighbouring GPS windows share observations. It also scores distance to the road directly, uses absolute travel-distance discrepancy, and penalises direct reversals according to how often they occurred in the fitting trips. After it reconstructs the route, a second pass places GPS observations in order on that predicted traversal. Near a junction it can assign a point to a connecting road that the vehicle crossed between two samples. The pass uses only the inferred traversal and GPS geometry. References enter afterwards for scoring.
+
+The notebook refitted the classifier and estimated decoder parameters on the 64 fitting trips in each fold. It chose the combination with the highest mean Top-1 across the 80 held-out trip predictions, then estimated the winning parameters on all 80 training trips. The four search variants below each include both motion scoring and ordered alignment. [Per-trip validation scores](notebook_run/decoder_validation.csv)
+
+| Decoder variant | Mean held-out trip Top-1 |
+|---|---:|
+| Original Viterbi | 86.22% |
+| Original plus ordered alignment | 89.96% |
+| Motion scoring | 86.92% |
+| Motion scoring plus ordered alignment | 90.38% |
+| Add wider road search | 90.67% |
+| Add GPS smoothing | 93.51% |
+| Add GPS smoothing and distance-spaced observations | 94.81% |
+| Add smoothing, distance-spaced observations and wider search | **94.94%** |
+
+The selected configuration applies the following operations in order. [Prediction code](pathsnap/predict.py) · [Viterbi and alignment code](pathsnap/decoder.py) · [Exact numerical settings](artifacts/decoder.json)
+
+1. Split the GPS track at nonpositive time steps and gaps over 6 seconds. Within each fragment, fit local linear positions using up to four neighbouring observations on each side. The Gaussian time weights use a bandwidth of twice the fragment’s median sampling interval. Fragments shorter than three observations keep their original positions.
+2. Compute the same 11 candidate features on the smoothed track. Score up to 16 directed roads with the saved booster. Keep the nearest eight eligible. Admit each additional road if the closest road is more than one spatial scale away or the extra road is within one spatial scale of the closest road’s distance. The fitted spatial scale is 10.915663698419326 m.
+3. Keep both fragment endpoints and select a further observation each time its smoothed position is at least two spatial scales from the last retained one. At each retained observation, the emission log score is half the classifier’s normalised log score minus the point-to-road distance divided by the spatial scale. A direct reversal adds a cost of 9.553398019955731. This is the nonnegative log of `(other arc changes + 1) / (direct reversals + 1)` in the aligned training trips.
+4. Decode the retained observations on the directed network, recover connecting roads, and interpolate traversal positions for skipped observations within each predicted fragment. Around each estimated position, search up to 17 consecutive road occurrences centred where possible. Minimise total squared distance to the **original GPS points** while keeping traversal positions nondecreasing. Every observation receives a predicted arc.
+
+| Frozen model evaluation | Student test | Evaluator test |
+|---|---:|---:|
+| Trips | 10 | 10 |
+| Mean trip-level Top-1 | **98.01%** | **98.90%** |
+| Correct observations / total | 18,876 / 19,160 | 19,529 / 19,674 |
+| Pooled observation-level Top-1 | 98.52% | 99.26% |
+| Mean trip-level arc macro F1 | 0.982 | 0.988 |
+
+Each trip was predicted from its track and road network before its reference route was opened for scoring. Both test partitions had been evaluated during earlier development, so these figures describe the supplied trips. [Per-trip counts and scores](notebook_run/route_comparison.csv) · [Demo scoring worker](pathsnap/serve_worker.py)
 
 ## 4. MLOps in this project
 
