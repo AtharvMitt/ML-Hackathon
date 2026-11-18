@@ -2,6 +2,15 @@
 
 PathSnap reconstructs the directed roads a vehicle travelled from its GPS observations and the supplied road network. Laptop 1 serves a trained two-stage histogram gradient boosting model. Laptop 2 selects a trip and displays its reconstructed route.
 
+**Saved models from the training notebook**
+
+| Notebook output | File to open or download |
+|---|---|
+| Section 9 · final two-stage model used by the demo | [artifacts/temporal.joblib](artifacts/temporal.joblib) |
+| Section 7 · Bayesian-tuned single-stage model from the five-model comparison | [notebook_run/model.joblib](notebook_run/model.joblib) |
+
+Both files are included in Git. The demo loads the Section 9 file directly, so teachers can run it without executing the notebook.
+
 ## Where to find each part
 
 | To inspect or run | Start here |

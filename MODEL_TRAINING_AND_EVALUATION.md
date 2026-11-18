@@ -11,6 +11,15 @@ The demo on `main` serves **two histogram gradient boosting classifiers** from `
 
 [Training notebook](Train_and_Evaluate_Models.ipynb) · [Installation and demo commands](README.md#run-the-two-laptop-demo)
 
+## Saved trained models
+
+| Notebook cell | What it saves | Tracked file |
+|---|---|---|
+| Section 9, **Refit on the 80 training trips** | Both fitted gradient boosters, the candidate feature schema, and the selected sequence settings in one bundle. The demo loads this file directly. | [artifacts/temporal.joblib](artifacts/temporal.joblib) |
+| Section 7, **Tune the selected family, refit and save** | The fitted single-stage booster selected after Bayesian tuning, with its feature order and candidate count. | [notebook_run/model.joblib](notebook_run/model.joblib) |
+
+The packaged fallback is a copy of the Section 7 model. The route decoder reads its numerical settings from a separate JSON file. [Fallback classifier](artifacts/model.joblib) · [Decoder configuration](artifacts/decoder.json) · [Model-loading code](pathsnap/predict.py)
+
 ## 1. How raw files become labelled training examples
 
 ### Read and validate each trip
