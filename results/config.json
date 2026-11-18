@@ -1,0 +1,53 @@
+{
+  "family": "boosting",
+  "selected": {
+    "learning_rate": 0.06860525610098346
+  },
+  "candidate_count": 8,
+  "seed": 41,
+  "observation_cap_per_fit_trip": 256,
+  "search_trials": 6,
+  "search_space": [
+    0.025,
+    0.0270186983466912,
+    0.029200402413979747,
+    0.031558274577012484,
+    0.03410654004553416,
+    0.03686057268558523,
+    0.039836987771124495,
+    0.04305374222515353,
+    0.046530242955104974,
+    0.05028746393608938,
+    0.054348072748372445,
+    0.05873656733249213,
+    0.06347942378706885,
+    0.06860525610098346,
+    0.07414498878359872,
+    0.08013204343451423,
+    0.08660254037844387,
+    0.09359551658169275,
+    0.10115316116493961,
+    0.10932106993318967,
+    0.11814852045849536,
+    0.12768876937503834,
+    0.13799937368017526,
+    0.14914253797987886,
+    0.16118548977353128,
+    0.1742008850421888,
+    0.18826724658726118,
+    0.20346943776413348,
+    0.21989917446879914,
+    0.23765557846635607,
+    0.256845775399635,
+    0.2775855410857894,
+    0.3
+  ],
+  "objective": "mean per-trip observation Top-1",
+  "models": {
+    "logistic": "Pipeline(steps=[('standardscaler', StandardScaler()),\n                ('logisticregression', LogisticRegression(max_iter=300))])",
+    "naive_bayes": "GaussianNB()",
+    "decision_tree": "DecisionTreeClassifier(max_depth=12, min_samples_leaf=32, random_state=41)",
+    "extra_trees": "ExtraTreesClassifier(max_depth=18, min_samples_leaf=8, n_estimators=32,\n                     n_jobs=2, random_state=41)",
+    "boosting": "HistGradientBoostingClassifier(early_stopping=False, random_state=41)"
+  }
+}

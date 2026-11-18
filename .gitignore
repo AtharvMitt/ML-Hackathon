@@ -1,0 +1,11 @@
+.cache/
+__pycache__/
+.venv/
+Student folder/
+*.zip
+*.mp4
+/*.pdf
+/.pathsnap-git/
+/.agents/
+/.aws/
+/.codex/
